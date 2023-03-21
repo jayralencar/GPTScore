@@ -3,6 +3,7 @@ import torch
 import torch.nn as nn
 import traceback
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
+from tqdm import tqdm
 
 class FLANScorer:
     def __init__(self, device='cuda:0', max_length=1024, checkpoint='google/flan-t5-base'):
@@ -24,7 +25,7 @@ class FLANScorer:
     def score(self, srcs, tgts, batch_size):
         """ Score a batch of examples """
         score_list = []
-        for i in range(0, len(srcs), batch_size):
+        for i in tqdm(range(0, len(srcs), batch_size)):
             src_list = srcs[i: i + batch_size]
             tgt_list = tgts[i: i + batch_size]
      
