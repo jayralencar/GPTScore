@@ -10,7 +10,7 @@ class FLANScorer:
         self.device = device
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint,torch_dtype=torch.float16)
         self.model.eval()
         self.model.to(device)
         # Set up loss
