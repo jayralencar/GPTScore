@@ -27,9 +27,7 @@ class FLANScorer:
         for i in range(0, len(srcs), batch_size):
             src_list = srcs[i: i + batch_size]
             tgt_list = tgts[i: i + batch_size]
-            if i <1:
-                print('src_list: ',src_list)
-                print('tgt_list: ', tgt_list)
+     
             try:
                 with torch.no_grad():
                     encoded_src = self.tokenizer(
