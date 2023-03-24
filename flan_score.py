@@ -4,6 +4,7 @@ import torch.nn as nn
 import traceback
 from transformers import AutoModelForSeq2SeqLM, AutoTokenizer
 from tqdm import tqdm
+import numpy as np
 
 class FLANScorer:
     def __init__(self, device='cuda:0', max_length=1024, checkpoint='google/flan-t5-base'):
@@ -11,7 +12,8 @@ class FLANScorer:
         self.device = device
         self.max_length = max_length
         self.tokenizer = AutoTokenizer.from_pretrained(checkpoint)
-        self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint,torch_dtype=torch.float16)
+        self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint)
+        # self.model = AutoModelForSeq2SeqLM.from_pretrained(checkpoint,torch_dtype=torch.float16)
         self.model.eval()
         self.model.to(device)
         # Set up loss
@@ -22,7 +24,22 @@ class FLANScorer:
         """ Load model from paraphrase finetuning """
         self.model.load_state_dict(torch.load('models/bart.pth', map_location=self.device))
 
-    def score(self, srcs, tgts, batch_size):
+    def inverse_frequency(self,matrix):
+        # Compute frequency of each item in each row
+        freq_matrix = torch.zeros((matrix.shape[0], matrix.max()+1), dtype=torch.float)
+        for i in range(matrix.shape[0]):
+            row = matrix[i]
+            unique_values, counts = torch.unique(row, return_counts=True)
+            freq_matrix[i, unique_values] = counts.float()
+        freq_matrix[freq_matrix == 0] = 1  # avoid division by zero
+
+        # Compute inverse frequency of each item in each row
+        inv_freq_matrix = 1 / freq_matrix
+
+        # Create new matrix to store inverse frequencies
+        result_matrix = inv_freq_matrix.gather(1, matrix)
+        return result_matrix
+    def score(self, srcs, tgts, batch_size,weighted=False):
         """ Score a batch of examples """
         score_list = []
         for i in tqdm(range(0, len(srcs), batch_size)):
@@ -59,8 +76,14 @@ class FLANScorer:
                     logits = output.logits.view(-1, self.model.config.vocab_size)
                     loss = self.loss_fct(self.lsm(logits), tgt_tokens.view(-1))
                     loss = loss.view(tgt_tokens.shape[0], -1)
-                    loss = loss.sum(dim=1) / tgt_len
-                    curr_score_list = [-x.item() for x in loss]
+
+                    if weighted:
+                        inverse_frequency=self.inverse_frequency(tgt_tokens)
+                        loss = torch.mean(loss*inverse_frequency,dim=1)
+                        curr_score_list = [torch.exp(-x).item() for x in loss]    
+                    else:
+                        loss = loss.sum(dim=1) / tgt_len
+                        curr_score_list = [-x.item() for x in loss]
                     score_list += curr_score_list
 
             except RuntimeError:
