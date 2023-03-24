@@ -11,6 +11,6 @@ src = [template.format(d) for d in src]
 
 scorer = FLANScorer(device="cpu",checkpoint="google/flan-t5-base")
 
-sc = scorer.score(src, tgt,2,weighted=False)
+sc = scorer.score(src, tgt,2,weighted=True)
 
 print(sc)

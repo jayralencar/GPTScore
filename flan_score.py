@@ -79,7 +79,7 @@ class FLANScorer:
 
                     if weighted:
                         inverse_frequency=self.inverse_frequency(tgt_tokens)
-                        loss = torch.mean(loss*inverse_frequency,dim=1)
+                        loss = torch.mean(loss*inverse_frequency.to(self.device),dim=1)
                         curr_score_list = [torch.exp(-x).item() for x in loss]    
                     else:
                         loss = loss.sum(dim=1) / tgt_len
